@@ -6,7 +6,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plataforma de Compartición de Libros</title>
     <style>
-        /* ... (mismo CSS que antes) ... */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        header {
+            background-color: #4a90e2;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        nav {
+            background-color: #333;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .add-book-form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .add-book-form input,
+        .add-book-form button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .add-book-form button {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .add-book-form button:hover {
+            background-color: #357ab8;
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .search-bar input {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .book-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .book-item {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .book-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .book-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .book-info {
+            padding: 15px;
+        }
+
+        .book-info h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        .book-info p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .view-book-button {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .view-book-button:hover {
+            background-color: #357ab8;
+        }
     </style>
 </head>
 <body>
@@ -20,6 +147,10 @@
     </nav>
 
     <div class="container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Buscar libros..." onkeyup="filterBooks()">
+        </div>
+
         <!-- Formulario para subir libros -->
         <div class="add-book-form" id="add-book">
             <h2>Añadir un Libro</h2>
@@ -35,16 +166,7 @@
 
         <!-- Lista de libros -->
         <div class="book-list" id="book-list">
-            <!-- Ejemplo de libro -->
-            <div class="book-item">
-                <img src="https://via.placeholder.com/200x300" alt="Portada del libro">
-                <div class="book-info">
-                    <h3>El Principito</h3>
-                    <p>Autor: Antoine de Saint-Exupéry</p>
-                    <p>Año: 1943</p>
-                    <a href="#" class="view-book-button" onclick="viewBook('https://example.com/libro.pdf')">Ver libro</a>
-                </div>
-            </div>
+            <!-- Los libros añadidos aparecerán aquí -->
         </div>
     </div>
 
@@ -82,41 +204,8 @@
             // Guardar los libros actualizados en Local Storage
             localStorage.setItem('books', JSON.stringify(books));
 
-            // Crear el elemento del libro en la lista
-            const bookItem = document.createElement('div');
-            bookItem.className = 'book-item';
-            
-            const img = document.createElement('img');
-            img.src = cover;
-            img.alt = 'Portada del libro';
-            
-            const bookInfo = document.createElement('div');
-            bookInfo.className = 'book-info';
-            
-            const titleElement = document.createElement('h3');
-            titleElement.textContent = title;
-            
-            const authorElement = document.createElement('p');
-            authorElement.textContent = `Autor: ${author}`;
-            
-            const yearElement = document.createElement('p');
-            yearElement.textContent = `Año: ${year}`;
-
-            const viewButton = document.createElement('a');
-            viewButton.className = 'view-book-button';
-            viewButton.href = '#';
-            viewButton.textContent = 'Ver libro';
-            viewButton.onclick = function() { viewBook(pdf); };
-
-            // Montar el libro
-            bookInfo.appendChild(titleElement);
-            bookInfo.appendChild(authorElement);
-            bookInfo.appendChild(yearElement);
-            bookInfo.appendChild(viewButton);
-            bookItem.appendChild(img);
-            bookItem.appendChild(bookInfo);
-            
-            document.getElementById('book-list').appendChild(bookItem);
+            // Add book to the display
+            addBookToDisplay(book);
 
             // Limpiar el formulario
             this.reset();
@@ -127,42 +216,62 @@
             const books = JSON.parse(localStorage.getItem('books')) || [];
             
             books.forEach(book => {
-                const bookItem = document.createElement('div');
-                bookItem.className = 'book-item';
-                
-                const img = document.createElement('img');
-                img.src = book.cover;
-                img.alt = 'Portada del libro';
-                
-                const bookInfo = document.createElement('div');
-                bookInfo.className = 'book-info';
-                
-                const titleElement = document.createElement('h3');
-                titleElement.textContent = book.title;
-                
-                const authorElement = document.createElement('p');
-                authorElement.textContent = `Autor: ${book.author}`;
-                
-                const yearElement = document.createElement('p');
-                yearElement.textContent = `Año: ${book.year}`;
-
-                const viewButton = document.createElement('a');
-                viewButton.className = 'view-book-button';
-                viewButton.href = '#';
-                viewButton.textContent = 'Ver libro';
-                viewButton.onclick = function() { viewBook(book.pdf); };
-
-                // Montar el libro
-                bookInfo.appendChild(titleElement);
-                bookInfo.appendChild(authorElement);
-                bookInfo.appendChild(yearElement);
-                bookInfo.appendChild(viewButton);
-                bookItem.appendChild(img);
-                bookItem.appendChild(bookInfo);
-                
-                document.getElementById('book-list').appendChild(bookItem);
+                addBookToDisplay(book);
             });
         };
+
+        // Función para agregar un libro a la vista
+        function addBookToDisplay(book) {
+            const bookItem = document.createElement('div');
+            bookItem.className = 'book-item';
+            
+            const img = document.createElement('img');
+            img.src = book.cover;
+            img.alt = 'Portada del libro';
+            
+            const bookInfo = document.createElement('div');
+            bookInfo.className = 'book-info';
+            
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = book.title;
+            
+            const authorElement = document.createElement('p');
+            authorElement.textContent = `Autor: ${book.author}`;
+            
+            const yearElement = document.createElement('p');
+            yearElement.textContent = `Año: ${book.year}`;
+
+            const viewButton = document.createElement('a');
+            viewButton.className = 'view-book-button';
+            viewButton.href = '#';
+            viewButton.textContent = 'Ver libro';
+            viewButton.onclick = function() { viewBook(book.pdf); };
+
+            // Montar el libro
+            bookInfo.appendChild(titleElement);
+            bookInfo.appendChild(authorElement);
+            bookInfo.appendChild(yearElement);
+            bookInfo.appendChild(viewButton);
+            bookItem.appendChild(img);
+            bookItem.appendChild(bookInfo);
+            
+            document.getElementById('book-list').appendChild(bookItem);
+        }
+
+        // Función para filtrar libros
+        function filterBooks() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const bookItems = document.querySelectorAll('.book-item');
+
+            bookItems.forEach(item => {
+                const title = item.querySelector('h3').textContent.toLowerCase();
+                if (title.includes(input)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
     </script>
 </body>
 </html>
