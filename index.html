@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -178,11 +177,13 @@
     <script type="module">
         // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
         
         // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCimalbI1CeG4duN3mUzM5R3T33u2TFPLk",
             authDomain: "virtual-books-fa013.firebaseapp.com",
+            databaseURL: "https://virtual-books-fa013-default-rtdb.firebaseio.com",
             projectId: "virtual-books-fa013",
             storageBucket: "virtual-books-fa013.firebasestorage.app",
             messagingSenderId: "827603215635",
@@ -193,11 +194,8 @@
         const app = initializeApp(firebaseConfig);
         
         // Inicializar la base de datos
-        const db = firebase.database(app);
-    </script>
+        const db = getDatabase(app);
 
-    <!-- Scripts de la aplicación -->
-    <script>
         // Función para manejar el formulario de añadir libros
         document.getElementById('bookForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -216,7 +214,11 @@
                 pdf
             };
 
-            db.ref('books').push(book).then(() => {
+            // Obtener la referencia a la base de datos
+            const booksRef = ref(db, 'books');
+
+            // Guardar el libro en la base de datos
+            push(booksRef, book).then(() => {
                 alert('Libro guardado correctamente!');
                 this.reset();
             }).catch(error => {
@@ -229,8 +231,13 @@
             const bookList = document.getElementById('book-list');
             bookList.innerHTML = '';
 
-            db.ref('books').on('value', function(snapshot) {
-                snapshot.forEach(function(childSnapshot) {
+            // Obtener la referencia a la base de datos
+            const booksRef = ref(db, 'books');
+
+            // Escuchar los cambios en la base de datos
+            onValue(booksRef, (snapshot) => {
+                bookList.innerHTML = ''; // Limpiar la lista antes de agregar los libros
+                snapshot.forEach((childSnapshot) => {
                     const book = childSnapshot.val();
                     const bookItem = document.createElement('div');
                     bookItem.className = 'book-item';
@@ -280,10 +287,18 @@
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const bookList = document.getElementById('book-list');
 
-            db.ref('books').on('value', function(snapshot) {
-                const filteredBooks = snapshot.val().filter(book => 
-                    book.title.toLowerCase().includes(searchTerm)
-                );
+            // Obtener la referencia a la base de datos
+            const booksRef = ref(db, 'books');
+
+            // Escuchar los cambios en la base de datos
+            onValue(booksRef, (snapshot) => {
+                const filteredBooks = [];
+                snapshot.forEach((childSnapshot) => {
+                    const book = childSnapshot.val();
+                    if (book.title.toLowerCase().includes(searchTerm)) {
+                        filteredBooks.push(book);
+                    }
+                });
 
                 bookList.innerHTML = '';
                 filteredBooks.forEach(book => {
@@ -330,4 +345,3 @@
     </script>
 </body>
 </html>
-```
