@@ -169,43 +169,23 @@
         </div>
     </div>
 
-    <!-- Scripts de Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js"></script>
-
-    <!-- Codigo de Firebase -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
-        
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCimalbI1CeG4duN3mUzM5R3T33u2TFPLk",
-            authDomain: "virtual-books-fa013.firebaseapp.com",
-            databaseURL: "https://virtual-books-fa013-default-rtdb.firebaseio.com",
-            projectId: "virtual-books-fa013",
-            storageBucket: "virtual-books-fa013.firebasestorage.app",
-            messagingSenderId: "827603215635",
-            appId: "1:827603215635:web:1f70b2f5eaf7ded048e6e6"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        
-        // Inicializar la base de datos
-        const db = getDatabase(app);
+    <script>
+        // Función para mostrar el libro en una nueva página
+        function viewBook(bookPageUrl) {
+            window.location.href = bookPageUrl;
+        }
 
         // Función para manejar el formulario de añadir libros
         document.getElementById('bookForm').addEventListener('submit', function(e) {
             e.preventDefault();
-
+            
             const cover = document.getElementById('cover').value;
             const title = document.getElementById('title').value;
             const author = document.getElementById('author').value;
             const year = document.getElementById('year').value;
             const pdf = document.getElementById('pdf').value;
 
+            // Crear un nuevo libro
             const book = {
                 cover,
                 title,
@@ -214,134 +194,83 @@
                 pdf
             };
 
-            // Obtener la referencia a la base de datos
-            const booksRef = ref(db, 'books');
+            // Obtener los libros guardados en Local Storage
+            let books = JSON.parse(localStorage.getItem('books')) || [];
+            
+            // Agregar el nuevo libro
+            books.push(book);
+            
+            // Guardar los libros actualizados en Local Storage
+            localStorage.setItem('books', JSON.stringify(books));
 
-            // Guardar el libro en la base de datos
-            push(booksRef, book).then(() => {
-                alert('Libro guardado correctamente!');
-                this.reset();
-            }).catch(error => {
-                alert('Error al guardar el libro: ' + error.message);
-            });
+            // Add book to the display
+            addBookToDisplay(book);
+
+            // Limpiar el formulario
+            this.reset();
         });
 
-        // Función para cargar los libros desde Firebase
-        function loadBooks() {
-            const bookList = document.getElementById('book-list');
-            bookList.innerHTML = '';
-
-            // Obtener la referencia a la base de datos
-            const booksRef = ref(db, 'books');
-
-            // Escuchar los cambios en la base de datos
-            onValue(booksRef, (snapshot) => {
-                bookList.innerHTML = ''; // Limpiar la lista antes de agregar los libros
-                snapshot.forEach((childSnapshot) => {
-                    const book = childSnapshot.val();
-                    const bookItem = document.createElement('div');
-                    bookItem.className = 'book-item';
-
-                    const img = document.createElement('img');
-                    img.src = book.cover;
-                    img.alt = 'Portada del libro';
-
-                    const bookInfo = document.createElement('div');
-                    bookInfo.className = 'book-info';
-
-                    const titleElement = document.createElement('h3');
-                    titleElement.textContent = book.title;
-
-                    const authorElement = document.createElement('p');
-                    authorElement.textContent = `Autor: ${book.author}`;
-
-                    const yearElement = document.createElement('p');
-                    yearElement.textContent = `Año: ${book.year}`;
-
-                    const viewButton = document.createElement('a');
-                    viewButton.className = 'view-book-button';
-                    viewButton.href = '#';
-                    viewButton.textContent = 'Ver libro';
-                    viewButton.onclick = function() { viewBook(book.pdf); };
-
-                    // Montar el libro
-                    bookInfo.appendChild(titleElement);
-                    bookInfo.appendChild(authorElement);
-                    bookInfo.appendChild(yearElement);
-                    bookInfo.appendChild(viewButton);
-                    bookItem.appendChild(img);
-                    bookItem.appendChild(bookInfo);
-
-                    bookList.appendChild(bookItem);
-                });
+        // Función para cargar los libros guardados al cargar la página
+        window.onload = function() {
+            const books = JSON.parse(localStorage.getItem('books')) || [];
+            
+            books.forEach(book => {
+                addBookToDisplay(book);
             });
+        };
+
+        // Función para agregar un libro a la vista
+        function addBookToDisplay(book) {
+            const bookItem = document.createElement('div');
+            bookItem.className = 'book-item';
+            
+            const img = document.createElement('img');
+            img.src = book.cover;
+            img.alt = 'Portada del libro';
+            
+            const bookInfo = document.createElement('div');
+            bookInfo.className = 'book-info';
+            
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = book.title;
+            
+            const authorElement = document.createElement('p');
+            authorElement.textContent = `Autor: ${book.author}`;
+            
+            const yearElement = document.createElement('p');
+            yearElement.textContent = `Año: ${book.year}`;
+
+            const viewButton = document.createElement('a');
+            viewButton.className = 'view-book-button';
+            viewButton.href = '#';
+            viewButton.textContent = 'Ver libro';
+            viewButton.onclick = function() { viewBook(book.pdf); };
+
+            // Montar el libro
+            bookInfo.appendChild(titleElement);
+            bookInfo.appendChild(authorElement);
+            bookInfo.appendChild(yearElement);
+            bookInfo.appendChild(viewButton);
+            bookItem.appendChild(img);
+            bookItem.appendChild(bookInfo);
+            
+            document.getElementById('book-list').appendChild(bookItem);
         }
 
-        // Función para mostrar el libro en una nueva página
-        function viewBook(bookPageUrl) {
-            window.location.href = bookPageUrl;
-        }
-
-        // Función para filtrar libros por título
+        // Función para filtrar libros
         function filterBooks() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const bookList = document.getElementById('book-list');
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const bookItems = document.querySelectorAll('.book-item');
 
-            // Obtener la referencia a la base de datos
-            const booksRef = ref(db, 'books');
-
-            // Escuchar los cambios en la base de datos
-            onValue(booksRef, (snapshot) => {
-                const filteredBooks = [];
-                snapshot.forEach((childSnapshot) => {
-                    const book = childSnapshot.val();
-                    if (book.title.toLowerCase().includes(searchTerm)) {
-                        filteredBooks.push(book);
-                    }
-                });
-
-                bookList.innerHTML = '';
-                filteredBooks.forEach(book => {
-                    const bookItem = document.createElement('div');
-                    bookItem.className = 'book-item';
-
-                    const img = document.createElement('img');
-                    img.src = book.cover;
-                    img.alt = 'Portada del libro';
-
-                    const bookInfo = document.createElement('div');
-                    bookInfo.className = 'book-info';
-
-                    const titleElement = document.createElement('h3');
-                    titleElement.textContent = book.title;
-
-                    const authorElement = document.createElement('p');
-                    authorElement.textContent = `Autor: ${book.author}`;
-
-                    const yearElement = document.createElement('p');
-                    yearElement.textContent = `Año: ${book.year}`;
-
-                    const viewButton = document.createElement('a');
-                    viewButton.className = 'view-book-button';
-                    viewButton.href = '#';
-                    viewButton.textContent = 'Ver libro';
-                    viewButton.onclick = function() { viewBook(book.pdf); };
-
-                    // Montar el libro
-                    bookInfo.appendChild(titleElement);
-                    bookInfo.appendChild(authorElement);
-                    bookInfo.appendChild(yearElement);
-                    bookInfo.appendChild(viewButton);
-                    bookItem.appendChild(img);
-                    bookItem.appendChild(bookInfo);
-
-                    bookList.appendChild(bookItem);
-                });
+            bookItems.forEach(item => {
+                const title = item.querySelector('h3').textContent.toLowerCase();
+                if (title.includes(input)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
             });
         }
-
-        // Inicializar la carga de libros al cargar la página
-        window.onload = loadBooks;
     </script>
 </body>
 </html>
