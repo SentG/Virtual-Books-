@@ -189,15 +189,15 @@
 
             async search(query) {
                 try {
-                    const response = await axios.get(`https://olympusbiblioteca.com/libros?search=${query}`);
+                    const response = await axios.get(`https://olympusbiblioteca.com/?s=${encodeURIComponent(query)}`);
                     const $ = cheerio.load(response.data);
                     const books = [];
 
-                    $('.book-list .book-item').each((i, elem) => {
+                    $('.book-item').each((i, elem) => {
                         const title = $(elem).find('.book-title').text().trim();
                         const author = $(elem).find('.book-author').text().trim();
                         const cover = $(elem).find('.book-cover').attr('src');
-                        const bookId = $(elem).attr('data-book-id');
+                        const bookId = $(elem).data('book-id'); // Asegúrate de que el atributo data-book-id esté presente
 
                         books.push({
                             id: bookId,
@@ -333,9 +333,6 @@
                 const elementoAutor = document.createElement('p');
                 elementoAutor.textContent = `Autor: ${libro.author}`;
 
-                const elementoAnio = document.createElement('p');
-                elementoAnio.textContent = `Año: ${libro.year}`;
-
                 const botonVer = document.createElement('a');
                 botonVer.className = 'view-book-button';
                 botonVer.href = '#';
@@ -344,7 +341,6 @@
 
                 infoLibro.appendChild(elementoTitulo);
                 infoLibro.appendChild(elementoAutor);
-                infoLibro.appendChild(elementoAnio);
                 infoLibro.appendChild(botonVer);
                 itemLibro.appendChild(img);
                 itemLibro.appendChild(infoLibro);
@@ -399,11 +395,7 @@
 
         // Función para ver el libro
         function verLibro(urlLibro) {
-            if (urlLibro.includes('olympusbiblioteca.com')) {
-                window.open(urlLibro, '_blank');
-            } else {
-                window.location.href = urlLibro;
-            }
+            window.open(urlLibro, '_blank');
         }
 
         // Listeners de eventos
@@ -412,7 +404,6 @@
             mostrarLibros(libros);
 
             document.getElementById('bookForm').addEventListener('submit', manejarEnvioFormulario);
-
             document.getElementById('searchInput').addEventListener('keyup', filtrarLibros);
 
             // Cargar extensión de Olympus
