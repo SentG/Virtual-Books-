@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital Library</title>
     <style>
+        /* Estilos CSS iguales que los originales */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -135,6 +136,8 @@
             background-color: #357ab8;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cheerio@1.0.0/dist/cheerio.min.js"></script>
     <script type="module">
         // Importa las funciones necesarias de los SDKs de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
@@ -154,13 +157,138 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Clase base para extensiones
+        class BaseExtension {
+            constructor() {
+                this.name = 'Base Extension';
+                this.description = 'Descripción de la extensión';
+                this.version = '1.0.0';
+            }
+
+            async search(query) {
+                throw new Error('Método search no implementado');
+            }
+
+            async getBookDetails(bookId) {
+                throw new Error('Método getBookDetails no implementado');
+            }
+
+            async downloadBook(bookId) {
+                throw new Error('Método downloadBook no implementado');
+            }
+        }
+
+        // Extensión para Olympus
+        class OlympusExtension extends BaseExtension {
+            constructor() {
+                super();
+                this.name = 'Olympus';
+                this.description = 'Acceso a libros de Olympus';
+                this.version = '1.0.0';
+            }
+
+            async search(query) {
+                try {
+                    const response = await axios.get(`https://olympusbiblioteca.com/libros?search=${query}`);
+                    const $ = cheerio.load(response.data);
+                    const books = [];
+
+                    $('.book-list .book-item').each((i, elem) => {
+                        const title = $(elem).find('.book-title').text().trim();
+                        const author = $(elem).find('.book-author').text().trim();
+                        const cover = $(elem).find('.book-cover').attr('src');
+                        const bookId = $(elem).attr('data-book-id');
+
+                        books.push({
+                            id: bookId,
+                            title,
+                            author,
+                            cover
+                        });
+                    });
+
+                    return books;
+                } catch (error) {
+                    console.error('Error al buscar libros en Olympus:', error);
+                    return [];
+                }
+            }
+
+            async getBookDetails(bookId) {
+                try {
+                    const response = await axios.get(`https://olympusbiblioteca.com/libro/${bookId}`);
+                    const $ = cheerio.load(response.data);
+                    const details = {};
+
+                    details.title = $('.book-title').text().trim();
+                    details.author = $('.book-author').text().trim();
+                    details.cover = $('.book-cover').attr('src');
+                    details.description = $('.book-description').text().trim();
+                    details.pdfLink = $('.book-pdf').attr('href');
+
+                    return details;
+                } catch (error) {
+                    console.error('Error al obtener detalles del libro:', error);
+                    return null;
+                }
+            }
+
+            async downloadBook(bookId) {
+                try {
+                    const details = await this.getBookDetails(bookId);
+                    if (details && details.pdfLink) {
+                        window.location.href = details.pdfLink;
+                    }
+                } catch (error) {
+                    console.error('Error al descargar libro:', error);
+                }
+            }
+        }
+
+        // Gestor de extensiones
+        class ExtensionManager {
+            constructor() {
+                this.extensions = [];
+            }
+
+            async loadExtensions() {
+                const extensionFiles = [
+                    'extensions/olympus.js' // Extensión de Olympus
+                ];
+
+                for (const file of extensionFiles) {
+                    try {
+                        const response = await fetch(file);
+                        const code = await response.text();
+                        const tempScript = document.createElement('script');
+                        tempScript.textContent = code;
+                        document.body.appendChild(tempScript);
+                        const extensionClass = window[`${file.split('/').pop().replace('.js', '')}Extension`];
+                        const extension = new extensionClass();
+                        this.extensions.push(extension);
+                    } catch (error) {
+                        console.error('Error al cargar la extensión:', error);
+                    }
+                }
+            }
+
+            async searchBooks(query) {
+                const results = [];
+                for (const extension of this.extensions) {
+                    const books = await extension.search(query);
+                    results.push(...books);
+                }
+                return results;
+            }
+        }
+
         // Función para agregar un libro a Firestore
         async function agregarLibroAFirestore(libro) {
             try {
                 const coleccionLibros = collection(db, 'books');
                 const docRef = await addDoc(coleccionLibros, libro);
                 console.log("Documento escrito con ID: ", docRef.id);
-                return docRef.id; // Retorna el ID del documento
+                return docRef.id;
             } catch (e) {
                 console.error("Error al agregar el documento: ", e);
                 return null;
@@ -186,7 +314,7 @@
         // Función para mostrar los libros
         function mostrarLibros(libros) {
             const listaLibrosDiv = document.getElementById('book-list');
-            listaLibrosDiv.innerHTML = ''; // Limpia los libros existentes
+            listaLibrosDiv.innerHTML = '';
 
             libros.forEach(libro => {
                 const itemLibro = document.createElement('div');
@@ -214,7 +342,6 @@
                 botonVer.textContent = 'Ver libro';
                 botonVer.onclick = function () { verLibro(libro.pdf); };
 
-                // Ensambla el elemento del libro
                 infoLibro.appendChild(elementoTitulo);
                 infoLibro.appendChild(elementoAutor);
                 infoLibro.appendChild(elementoAnio);
@@ -244,21 +371,13 @@
                 pdf
             };
 
-            // Agrega el libro a Firestore
             const libroId = await agregarLibroAFirestore(libro);
 
             if (libroId) {
-                // Opcionalmente, maneja el éxito (ej., muestra un mensaje de éxito)
-                console.log('Libro agregado correctamente con ID:', libroId);
-
-                // Refresca la lista de libros
                 const libros = await obtenerLibrosDeFirestore();
                 mostrarLibros(libros);
-
-                // Limpia el formulario
                 document.getElementById('bookForm').reset();
             } else {
-                // Maneja el fallo (ej., muestra un mensaje de error)
                 console.error('Fallo al agregar el libro.');
             }
         }
@@ -278,22 +397,27 @@
             });
         }
 
-        // Función para ver el libro en una nueva página
+        // Función para ver el libro
         function verLibro(urlLibro) {
-            window.location.href = urlLibro;
+            if (urlLibro.includes('olympusbiblioteca.com')) {
+                window.open(urlLibro, '_blank');
+            } else {
+                window.location.href = urlLibro;
+            }
         }
 
         // Listeners de eventos
         document.addEventListener('DOMContentLoaded', async () => {
-            // Carga los libros al cargar la página
             const libros = await obtenerLibrosDeFirestore();
             mostrarLibros(libros);
 
-            // Adjunta el handler de envío al formulario
             document.getElementById('bookForm').addEventListener('submit', manejarEnvioFormulario);
 
-            // Adjunta la función de filtro a la entrada de búsqueda
             document.getElementById('searchInput').addEventListener('keyup', filtrarLibros);
+
+            // Cargar extensión de Olympus
+            const extensionManager = new ExtensionManager();
+            await extensionManager.loadExtensions();
         });
     </script>
 </head>
